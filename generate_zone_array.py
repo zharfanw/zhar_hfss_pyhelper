@@ -32,11 +32,15 @@ def wrap_deg_sym(deg: float) -> float:
     """Wrap phase to [-180, 180) degrees"""
     return (deg + 180.0) % 360.0 - 180.0
 
+def wrap_deg_neg360_0(deg: float) -> float:
+    """Wrap phase to [-360, 0) degrees"""
+    return deg % 360.0 - 360.0
+
 def lambda0_mm(f_hz: float) -> float:
     c = 299_792_458.0  # m/s
     return (c / f_hz) * 1000.0  # mm
 
-def phase_from_r_mm(r_xy_mm: float, f_mm: float, f_hz: float, wrap=True) -> float:
+def phase_from_r_mm(r_xy_mm: float, f_mm: float, f_hz: float, wrap=False, init_deg=0) -> float:
     """
     r_xy_mm: radial distance from cell center to focal projection on aperture plane (mm)
     f_mm: focal distance along z (mm)
@@ -47,16 +51,33 @@ def phase_from_r_mm(r_xy_mm: float, f_mm: float, f_hz: float, wrap=True) -> floa
 
     delta_L = math.sqrt(r_xy_mm**2 + f_mm**2) - f_mm  # mm
     phase_rad = k0 * delta_L
-    phase_deg = math.degrees(phase_rad)
+    phase_deg = math.degrees(phase_rad)+init_deg
 
-    # return wrap_deg_sym(phase_deg) if wrap else phase_deg
-    return phase_deg
+    return wrap_deg_sym(phase_deg) if wrap else phase_deg
+    # return phase_deg
+
+def phase_from_r_mm_360(r_xy_mm: float, f_mm: float, f_hz: float, wrap=False, init_deg=0) -> float:
+    """
+    r_xy_mm: radial distance from cell center to focal projection on aperture plane (mm)
+    f_mm: focal distance along z (mm)
+    phase = k0 * (sqrt(r^2 + f^2) - f)
+    """
+    lam_mm = lambda0_mm(f_hz)
+    k0 = 2.0 * math.pi / lam_mm  # rad/mm
+
+    delta_L = math.sqrt(r_xy_mm**2 + f_mm**2) - f_mm  # mm
+    phase_rad = k0 * delta_L
+    phase_deg = math.degrees(phase_rad)+init_deg
+
+    return wrap_deg_neg360_0(phase_deg) if wrap else phase_deg
+    # return phase_deg
 
 
 # =========================
 # BUILD GRID
 # =========================
 phase_map = np.zeros((ynum_uc, xnum_uc), dtype=float)
+phase_map_360 = np.zeros((ynum_uc, xnum_uc), dtype=float)
 r_map = np.zeros((ynum_uc, xnum_uc), dtype=float)
 
 unitcell_profile = []
@@ -71,10 +92,12 @@ for iy in range(ynum_uc):
         c_x = x_org + (xlen_uc_mm / 2.0)
 
         r_xy = math.sqrt((foc_x_mm - c_x)**2 + (foc_y_mm - c_y)**2)
-        ph_deg = phase_from_r_mm(r_xy, foc_z_mm, f0_hz, wrap=True)
+        ph_deg = phase_from_r_mm(r_xy, foc_z_mm, f0_hz, wrap=False,init_deg=0)
+        ph_deg_360 = phase_from_r_mm_360(r_xy, foc_z_mm, f0_hz, wrap=True,init_deg=-516.039)
 
         r_map[iy, ix] = r_xy
         phase_map[iy, ix] = ph_deg
+        phase_map_360[iy, ix] = ph_deg_360
 
         unitcell_profile.append({
             "index": idx,
@@ -112,9 +135,17 @@ ax1.set_ylabel("Y index (row)")
 ax1.set_title("Distance r_xy from cell center to focal projection (mm)")
 
 fig2, ax2 = plt.subplots()
-im2 = ax2.imshow(phase_map, origin="lower", cmap="plasma", vmin=-180, vmax=180)
+im2 = ax2.imshow(phase_map, origin="lower", cmap="plasma")
 cbar2 = fig2.colorbar(im2, ax=ax2)
 cbar2.set_label("Phase [deg] (wrapped to [-180, 180))")
+ax2.set_xlabel("X index (column)")
+ax2.set_ylabel("Y index (row)")
+ax2.set_title("Phase Distribution (Transmitarray/Lens)")
+
+fig2, ax2 = plt.subplots()
+im2 = ax2.imshow(phase_map_360, origin="lower", cmap="plasma")
+cbar2 = fig2.colorbar(im2, ax=ax2)
+cbar2.set_label("Phase [deg] (wrapped to [-360, 0))")
 ax2.set_xlabel("X index (column)")
 ax2.set_ylabel("Y index (row)")
 ax2.set_title("Phase Distribution (Transmitarray/Lens)")
