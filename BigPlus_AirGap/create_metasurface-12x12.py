@@ -20,7 +20,7 @@ oDesign.ChangeProperty(
 					"NAME:subsrate_thickness",
 					"PropType:="		, "VariableProp",
 					"UserDef:="		, True,
-					"Value:="		, "0.127mm"
+					"Value:="		, "1.575mm"
 				],
 				[
 					"NAME:copper_thickness",
@@ -218,8 +218,8 @@ def create_substrate(oEditor,name_sub='substrate',width=3,length=3):
     
 
 ## Define MetaSurface Param
-x_count=20
-y_count=20
+x_count=30
+y_count=30
 
 cell_length = 2.367
 cell_width = 2.367
@@ -237,8 +237,9 @@ create_substrate(oEditor,name_sub='substrate',width=cell_length*x_count,length=c
 
 import csv
 
-file_path = 'D:\matched_parameters_20x20.csv'
-
+# file_path = 'D:\matched_parameters_20x20.csv'
+# file_path = 'D:\matched_parameters_001in.csv'
+file_path = 'D:\matched_parameters_6layers1p5sub.csv'
 
 with open(file_path, mode='r') as file:
     reader = csv.reader(file)
